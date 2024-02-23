@@ -404,7 +404,7 @@ class Solver(object):
         c_org = torch.Tensor([])
         for i in range(self.batch_size):
             c_org = torch.cat([c_org, torch.Tensor([cnt])])
-        
+        # c_org = torch.full((batch_size,), cnt)
         
         print("c_org: ", c_org)
         c_fixed_list = self.create_labels(c_org, self.c_dim, self.dataset, self.selected_attrs)

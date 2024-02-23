@@ -43,8 +43,8 @@ def detection_face_test(image):
                 normalized_y=detection.location_data.relative_bounding_box.ymin
                 normalized_w=detection.location_data.relative_bounding_box.width
                 normalized_h=detection.location_data.relative_bounding_box.height
-                x = min(math.floor(normalized_x * image_width), image_width - 1)
-                y = min(math.floor(normalized_y * image_height), image_height - 1)
+                x = max(math.floor(normalized_x * image_width), 0)
+                y = max(math.floor(normalized_y * image_height), 0)
                 w = min(math.floor(normalized_w * image_width), image_width - 1)
                 h = min(math.floor(normalized_h * image_height), image_height - 1)
                 
@@ -62,72 +62,82 @@ def detection_face_test(image):
             pass
     return image_list
 
-def detection_and_resize_original(image):
+def detection_and_resize_original(image, size):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    while True:
-        
-        with mp_face_detection.FaceDetection(
-            model_selection=1, min_detection_confidence=0.5) as face_detection:
-            image_width = image.shape[1]
-            image_height = image.shape[0]
-            #image = cv2.imread(file)
-            # Convert the BGR image to RGB and process it with MediaPipe Face Detection.
-            results = face_detection.process(image)
+    with mp_face_detection.FaceDetection(
+        model_selection=1, min_detection_confidence=0.5) as face_detection:
 
-            # Draw face detections of each face.
-            image_list = []
-            image_list.append(cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-            annotated_image = image.copy()
-            try :
-                for i, detection in enumerate(results.detections):
-                    # print('Nose tip:')
-                    # print(mp_face_detection.get_key_point(
-                    #     detection, mp_face_detection.FaceKeyPoint.NOSE_TIP))
-                    #print(detection)
-                    normalized_x=detection.location_data.relative_bounding_box.xmin
-                    normalized_y=detection.location_data.relative_bounding_box.ymin
-                    normalized_w=detection.location_data.relative_bounding_box.width
-                    normalized_h=detection.location_data.relative_bounding_box.height
-                    x = min(math.floor(normalized_x * image_width), image_width - 1)
-                    y = min(math.floor(normalized_y * image_height), image_height - 1)
-                    w = min(math.floor(normalized_w * image_width), image_width - 1)
-                    h = min(math.floor(normalized_h * image_height), image_height - 1)
-                    
-                    #mp_drawing.draw_detection(annotated_image, detection)
-                    if w % 4 != 0:
-                        w -= w % 4
-                    if h % 4 != 0:
-                        h -= h % 4
-                    
-                    resize_face_size = 128
-                    
-                    if w > resize_face_size:
-                        # resize_w = 188 * image.shape[1] // w
-                        # resize_h = image.shape[0] * resize_w // image.shape[1]
-                        image = cv2.resize(image, (0,0), fx = resize_face_size / w, fy = resize_face_size / h, interpolation=cv2.INTER_AREA)
-                        #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                        print(image.shape)
-                        break
-                    print(x,y,w,h)
-                    #annotated_image = image[y-h//4:y+h, x:x+w]
-                    annotated_image = image[y:y+h, x:x+w]
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        #image = cv2.imread(file)
+        # Convert the BGR image to RGB and process it with MediaPipe Face Detection.
+        results = face_detection.process(image)
 
-                    #annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
-                    image_list.append([Image.fromarray(annotated_image), (x, y, w, h)])
-                    cv2.imwrite("data/{}.jpg".format(i), annotated_image)
-                    # cv2.imwrite("data/trash/original_{}.jpg".format(i), image)
-                if w <= resize_face_size:
-                    break
-            except:
-                pass
+        # Draw face detections of each face.
+        image_list = []
+        image_list.append(cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        annotated_image = image.copy()
+        for i, detection in enumerate(results.detections):
+            # print('Nose tip:')
+            # print(mp_face_detection.get_key_point(
+            #     detection, mp_face_detection.FaceKeyPoint.NOSE_TIP))
+            #print(detection)
+            normalized_x=detection.location_data.relative_bounding_box.xmin
+            normalized_y=detection.location_data.relative_bounding_box.ymin
+            normalized_w=detection.location_data.relative_bounding_box.width
+            normalized_h=detection.location_data.relative_bounding_box.height
+            x = max(math.floor(normalized_x * image_width), 0)
+            y = max(math.floor(normalized_y * image_height), 0)
+            w = min(math.floor(normalized_w * image_width), image_width - 1)
+            h = min(math.floor(normalized_h * image_height), image_height - 1)
+                    
+            #mp_drawing.draw_detection(annotated_image, detection)
+            
+            # if w % 4 != 0:
+            #     w -= w % 4
+            # if h % 4 != 0:
+            #     h -= h % 4
+            a_h = 0
+            # a_h = 50
+            print(a_h)
+            resize_face_size = size
+            '''
+            if w > resize_face_size:
+                # resize_w = 188 * image.shape[1] // w
+                # resize_h = image.shape[0] * resize_w // image.shape[1]
+                image = cv2.resize(image, (0,0), fx = resize_face_size / w, fy = resize_face_size / h, interpolation=cv2.INTER_AREA)
+                #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                print(image.shape)
+                break
+            '''
+            print(x,y,w,h)
+            x = x + w // 16
+            y = max((y - a_h) + h // 16, 0)
+            w = w * 7 // 8
+            h = (h + a_h) * 7 // 8
+            #annotated_image = image[y-h//4:y+h, x:x+w]
+            annotated_image = image[y:y+h, x:x+w]
+            output_image = cv2.resize(annotated_image, (size, size))
+            #annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
+            image_list.append([Image.fromarray(output_image), (x, y, w, h)])
+            cv2.imwrite("data/{}.jpg".format(i), annotated_image)
+            
+            # cv2.imwrite("data/trash/original_{}.jpg".format(i), image)
     return image_list # index 0 : resized original img, index 1 ~ : face img
+
+
+def adjust_forehead(eyebrow_end, chin_start):
+    # 이마를 포함하기 위해 y 좌표를 조정
+    # 턱선과 눈썹 사이의 거리의 20%를 이마 영역으로 추가
+    forehead_height = abs(int((eyebrow_end - chin_start) * 0.2))
+    forehead_start_y = max(0, eyebrow_end - forehead_height)
+
+    return forehead_start_y
 
 def get_face_mesh(img):
     
     face_detector = get_dlib_face_detector()
     landmarks = face_detector(img)
-
-    #display_facial_landmarks(img, [landmarks[0][:17]], fig_size=[5, 5])
         
     try:
         print(landmarks[0].shape)
@@ -136,7 +146,8 @@ def get_face_mesh(img):
         return None, None
     fa = landmarks[0][:17]
     min_y = int(min(landmarks[0].T[1]))
-
+    max_y = int(max(landmarks[0].T[1]))
+    min_y = adjust_forehead(min_y, max_y)
     ima = np.array(img)
     
     face = {}
@@ -172,7 +183,7 @@ def get_face_mesh(img):
     m = min(face.keys())
     
     x1, x2 = face[m]
-
+    
     for y in range(min_y, m):
         white[y][x1 : x2+1] = ima[y][x1 : x2+1]
         face[y] = [x1, x2]

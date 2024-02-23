@@ -15,7 +15,6 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torchvision import transforms as T
 import numpy as np
-import os
 from face_detection import detection_face_test, detection_and_resize_original, get_face_mesh
 from torchvision.transforms.functional import to_pil_image
 import logging
@@ -174,25 +173,27 @@ class HSEmotionRecognizer:
         return [self.idx_to_class[pred] for pred in preds],scores
 
 def main():
-    labels = ['original', 'angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
+    #labels = ['original', 'angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
     #config
-
+    labels = ['original', 'angry', 'fearful', 'happy', 'sad', 'surprised']
     # 생성모델
-    c_dim = 6
-    model_save_dir = 'stargan_new_6_leaky/models/330000-model'
-    test_iters=330000
+    c_dim = 5
+    conv_dim = 128
+    image_size = 256
+    test_iters='best'
+    model_save_dir = f'stargan_new_6_leaky/models/{test_iters}-model'
     #selected_attrs = ['angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
     G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device('cpu'))
-    G = Generator(64, c_dim, 6)
+    G = Generator(conv_dim, c_dim, 6)
     G.to('cpu')
     G.load_state_dict(saved_checkpoint_G, strict = False)
 
-    D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(test_iters))
-    saved_checkpoint_D = torch.load(D_path, map_location=torch.device('cpu'))
-    D = Discriminator(128, 64, c_dim, 6)
-    D.to('cpu')
-    D.load_state_dict(saved_checkpoint_D, strict = False)
+    # D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(test_iters))
+    # saved_checkpoint_D = torch.load(D_path, map_location=torch.device('cpu'))
+    # D = Discriminator(image_size, conv_dim, c_dim, 6)
+    # D.to('cpu')
+    # D.load_state_dict(saved_checkpoint_D, strict = False)
 
     # 감정인식모델
     model_name='enet_b2_7'
@@ -203,8 +204,8 @@ def main():
     choice = st.sidebar.selectbox('메뉴', ['감정 생성', '감정 피드백'])
     if choice == '감정 생성':
         st.subheader('이미지 파일 업로드')
-        file = st.file_uploader('이미지 파일을 업로드 하세요.', type=['jpg','jpeg'])
-        cols = st.columns(len(labels))
+        file = st.file_uploader('이미지 파일을 업로드 하세요.', type=['jpg','jpeg', 'png'])
+        cols = [*st.columns(len(labels)//2), *st.columns(len(labels)//2)]
         if file is not None:
             current_time = datetime.now()
             print(current_time.isoformat().replace(":","_").replace(".","_") + '.jpg')
@@ -217,7 +218,7 @@ def main():
             file_bytes = np.asarray(bytearray(file.read()), dtype=np.uint8)
             img_file = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
             logging.info("detect 시작")
-            img_list = detection_and_resize_original(img_file)
+            img_list = detection_and_resize_original(img_file, image_size)
             logging.info("detect 완료")
             img_file = cv2.cvtColor(img_list[0], cv2.COLOR_BGR2RGB)
             transform = []
@@ -249,21 +250,32 @@ def main():
                 print("fake_list: ", len(x_fake_list))
                 for i, fake in enumerate(x_fake_list):
                     translate_img = fake.data.cpu().squeeze(0)
+                    translate_img = translate_img.permute(1, 2, 0).numpy()
+                    translate_img = cv2.resize(translate_img,(w, h))
+                    translate_img = torch.from_numpy(translate_img).permute(2, 0, 1) # C, H, W
+                    min_value = translate_img.min()
+                    max_value = translate_img.max()
+
+                    print("min", np.min(min_value.item()), np.max(max_value.item()))
+                    print("min_origin", np.min(x_origin_list[i].cpu().numpy()), np.max(x_origin_list[i].cpu().numpy()))
                     for j in range(3):
                         for k in range(y, y+h):
                             x_origin_list[i][j][k][x:x+w] = translate_img[j][k-y] # -1에서 1 사이
+                    '''
+                    with cols[i]:
+                        numpy_image = denorm(x_origin_list[i].data.cpu()).numpy()
+                        numpy_image = np.transpose(numpy_image, (1, 2, 0))
+                        pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
+                        st.image(pil_image, width=250)
+                        st.caption(labels[i])
+                    '''
                     face_dict, mesh_img = get_face_mesh(to_pil_image(0.5*x_origin_list[i] + 0.5))
                     if face_dict == None:
-                        print("face mesh 찾기 실패")
-                        #numpy_image = denorm((0.5*x_origin_list[i] + 0.5).data.cpu()).numpy()
-                        print("max_value: ", max(map(max, map(max, x_origin_list[i]))))
-                        print("min_value: ", min(map(min, map(min, x_origin_list[i]))))
-                        numpy_image = denorm((0.5*x_origin_list[i] + 0.5).data.cpu()).numpy()
-                        numpy_image = np.transpose(numpy_image, (1, 2, 0))
-                        print(numpy_image.shape)
-                        pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
                         with cols[i]:
-                            st.image(pil_image, width=100)
+                            numpy_image = denorm(x_origin_list[i].data.cpu()).numpy()
+                            numpy_image = np.transpose(numpy_image, (1, 2, 0))
+                            pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
+                            st.image(pil_image, width=250)
                             st.caption(labels[i])
                         continue
                     print("mesh img : ", np.array(mesh_img).shape)
@@ -282,8 +294,10 @@ def main():
                     print(numpy_image.shape)
                     pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
                     with cols[i]:
-                        st.image(pil_image, width=100)
+                        st.image(pil_image, width=250)
                         st.caption(labels[i])
+                    
+                    
             end = time.time()
             st.text(f"{end-start:.5f} sec")
     elif choice == '감정 피드백':
