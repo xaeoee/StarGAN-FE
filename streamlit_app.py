@@ -181,7 +181,7 @@ def main():
     conv_dim = 128
     image_size = 256
     test_iters='best'
-    model_save_dir = f'stargan_new_6_leaky/models/{test_iters}-model'
+    model_save_dir = f'models/{test_iters}-model'
     #selected_attrs = ['angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
     G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device('cpu'))

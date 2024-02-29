@@ -61,7 +61,9 @@ class Generator(nn.Module):
         # Note that this type of label conditioning does not work at all if we use reflection padding in Conv2d.
         # This is because instance normalization ignores the shifting (or bias) effect.
         c = c.view(c.size(0), c.size(1), 1, 1)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         c = c.repeat(1, 1, x.size(2), x.size(3))
+        c = c.to(x.device)
         x = torch.cat([x, c], dim=1)
         return self.main(x)
 

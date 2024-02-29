@@ -15,6 +15,6 @@ stargan_new_6_leaky/results/sad/*.jpg
 stargan_new_6_leaky/results/total/*.jpg
 stargan_new_6_leaky/data/
 shape_predictor_68_face_landmarks.dat.bz2
-shape_predictor_68_face_landmarks.dat
 stargan_new_6_leaky/
 data/
+models/

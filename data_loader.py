@@ -68,22 +68,20 @@ class CelebA(data.Dataset):
         return self.num_images
 
 
-def get_loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128, 
-               batch_size=16, dataset='CelebA', mode='train', num_workers=1):
+def get_loader(image_dir, crop_size=178, image_size=128, 
+               batch_size=16,  mode='train', num_workers=1):
     """Build and return a data loader."""
     transform = []
     if mode == 'train':
         transform.append(T.RandomHorizontalFlip())
     transform.append(T.CenterCrop(crop_size))
     transform.append(T.Resize(image_size))
+    transform.append(T.ColorJitter(brightness=(0.8, 1.4), contrast=0.2))
     transform.append(T.ToTensor())
     transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
     transform = T.Compose(transform)
 
-    if dataset == 'CelebA':
-        dataset = CelebA(image_dir, attr_path, selected_attrs, transform, mode)
-    elif dataset == 'RaFD':
-        dataset = ImageFolder(image_dir, transform)
+    dataset = ImageFolder(image_dir, transform)
 
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batch_size,
@@ -108,30 +106,12 @@ class neutral_dataset(data.Dataset):
         y = self.dataset[index][1]
         return x,y
     
-class test_dataset(data.Dataset):
-    def __init__(self, test_img_dir, transform):
-        super().__init__()
-        self.test_img_dir = test_img_dir
-        self.transform = transform
-        self.img_files = [x for x in os.listdir(test_img_dir) if x.endswith('.jpg') or x.endswith('.png') or x.endswith('.jpeg')]
-
-    
-    def __len__(self):
-        return len(self.img_files)
-    
-    def __getitem__(self, idx):
-        img_path = os.path.join(self.test_img_dir, self.img_files[idx])
-        img = Image.open(img_path).convert('RGB')
-
-        if self.transform:
-            img = self.transform(img)
-        
-        return img
-
 def get_sample(config):
     transform = []
-    transform.append(T.CenterCrop(config.rafd_crop_size))
+    transform.append(T.CenterCrop(config.crop_size))
     transform.append(T.Resize(config.image_size))
+    transform.append(T.ColorJitter(brightness=(0.8, 1.4), contrast=0.2))
+    transform.append(T.GaussianBlur(kernel_size=3, sigma=(0.01, 1)))
     transform.append(T.ToTensor())
     transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
     transform = T.Compose(transform)
@@ -140,3 +120,20 @@ def get_sample(config):
                                  batch_size=config.batch_size,
                                  num_workers=config.num_workers)
     return data_loader
+
+def get_fid_sample(config):
+    transform = []
+    transform.append(T.CenterCrop(config.crop_size))
+    transform.append(T.Resize(config.image_size))
+    transform.append(T.ToTensor())
+    transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
+    transform = T.Compose(transform)
+    images_tensor = torch.zeros((config.fid_sample_size, 3, config.image_size, config.image_size))
+    image_files = os.listdir(config.fid_sample_dir)[:config.fid_sample_size]
+    for i, image_file in enumerate(image_files):
+        image_path = os.path.join(folder_path, image_file)
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+            img_tensor = transform(img)
+            images_tensor[i] = img_tensor
+    return images_tensor

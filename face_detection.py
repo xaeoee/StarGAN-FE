@@ -115,11 +115,13 @@ def detection_and_resize_original(image, size):
             y = max((y - a_h) + h // 16, 0)
             w = w * 7 // 8
             h = (h + a_h) * 7 // 8
+            print("요까지 됨!!")
             #annotated_image = image[y-h//4:y+h, x:x+w]
             annotated_image = image[y:y+h, x:x+w]
             output_image = cv2.resize(annotated_image, (size, size))
             #annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
             image_list.append([Image.fromarray(output_image), (x, y, w, h)])
+            print("하나 추가요!!")
             cv2.imwrite("data/{}.jpg".format(i), annotated_image)
             
             # cv2.imwrite("data/trash/original_{}.jpg".format(i), image)

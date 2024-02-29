@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from fastapi import FastAPI
+from typing import List
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException
 from starlette.responses import JSONResponse
@@ -10,10 +11,10 @@ from pydantic import BaseModel
 import base64
 from io import BytesIO
 import json
-
+from datetime import datetime
 from model import Generator
 import os
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from datetime import datetime
 import pandas as pd
 import cv2
@@ -58,6 +59,10 @@ def create_labels(c_org, c_dim=6):
 class Item(BaseModel):
     image: str
 
+class ImagesItem(BaseModel):
+    images: List[str]
+    #labels: List[str]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 모든 오리진을 허용하려면 ["*"]을 사용합니다.
@@ -73,7 +78,7 @@ async def root():
 @app.post("/generate")
 async def generate_emotion(item: Item):
     # 생성모델 초기 세팅
-    labels = ['original', 'angry', 'fearful', 'happy', 'sad', 'surprised']
+    labels = ['원본', '분노', '공포', '기쁨', '슬픔', '놀람']
     c_dim = 5
     conv_dim = 128
     image_size = 256
@@ -115,7 +120,6 @@ async def generate_emotion(item: Item):
 
             for c_trg in c_trg_list:
                 x_fake_list.append(G(x_real, c_trg))
-                logging.info("생성 모델!!")
                 x_origin_list.append(torch.tensor(original))
                 x_mesh_list.append(torch.tensor(original))
             images_data['images'] = []
@@ -131,19 +135,14 @@ async def generate_emotion(item: Item):
                         x_origin_list[i][j][k][x:x+w] = translate_img[j][k-y] # -1에서 1 사이
                 face_dict, mesh_img = get_face_mesh(to_pil_image(0.5*x_origin_list[i] + 0.5))
                 if face_dict == None:
-                    print("face mesh 찾기 실패")
                     numpy_image = denorm(x_origin_list[i].data.cpu()).numpy()
                     numpy_image = np.transpose(numpy_image, (1, 2, 0))
                     pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
-                    # PIL 이미지를 바이트로 변환
                     buffered = BytesIO()
                     pil_image.save(buffered, format="JPEG")
                     img_byte = buffered.getvalue()
-                    
-                    # 바이트를 Base64로 인코딩
                     img_base64 = base64.b64encode(img_byte)
                     
-                    # Base64 인코딩 문자열을 UTF-8로 디코딩하여 JSON 응답 가능하게 만듦
                     img_str = img_base64.decode('utf-8')
                     images_data['images'].append(img_str)
                     continue
@@ -158,20 +157,35 @@ async def generate_emotion(item: Item):
                 numpy_image = np.transpose(numpy_image, (1, 2, 0))
                 print(numpy_image.shape)
                 pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
-                # PIL 이미지를 바이트로 변환
                 buffered = BytesIO()
                 pil_image.save(buffered, format="JPEG")
                 img_byte = buffered.getvalue()
                 
-                # 바이트를 Base64로 인코딩
                 img_base64 = base64.b64encode(img_byte)
                 
-                # Base64 인코딩 문자열을 UTF-8로 디코딩하여 JSON 응답 가능하게 만듦
                 img_str = img_base64.decode('utf-8')
                 images_data['images'].append(img_str)
-        images_data['label'] = labels
-        return JSONResponse(content=images_data)
+        images_data['labels'] = labels
+        return JSONResponse(content=images_data, media_type="application/json; charset=utf-8")
           
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
+@app.post("/submit")
+async def submit_emotion(item: ImagesItem):
+    labels = ['original', 'angry', 'fearful', 'happy', 'sad', 'surprised']
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{current_time}.jpg"
+    for idx, image_base64 in enumerate(item.images):
+        if idx == 0:
+            continue
+        try:
+            image_data = base64.b64decode(image_base64)
+            image = Image.open(BytesIO(image_data))
+            image.save(f"data/extended_train/{labels[idx]}/{filename}")
+        except (ValueError, UnidentifiedImageError) as e:
+            return JSONResponse(status_code=400, content={"message": f"이미지 처리 중 오류가 발생했습니다: {e}"})
+        except IOError as e:
+            return JSONResponse(status_code=500, content={"message": f"이미지 저장 중 오류가 발생했습니다: {e}"})
+
+    return {"massage": "이미지가 저장되었습니다."}
