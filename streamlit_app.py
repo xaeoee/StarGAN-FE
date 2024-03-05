@@ -73,7 +73,6 @@ class HSEmotionRecognizer:
         self.device=device
         self.is_mtl='_mtl' in model_name
         if '_7' in model_name:
-            #self.idx_to_class={0: 'Anger', 1: 'Disgust', 2: 'Fear', 3: 'Happiness', 4: 'Neutral', 5: 'Sadness', 6: 'Surprise'}
             self.idx_to_class={0: 'Anger', 1: 'Fear', 2: 'Happiness', 3: 'Neutral', 4: 'Sadness', 5: 'Surprise'}
         else:
             self.idx_to_class={0: 'Anger', 1: 'Contempt', 2: 'Disgust', 3: 'Fear', 4: 'Happiness', 5: 'Neutral', 6: 'Sadness', 7: 'Surprise'}
