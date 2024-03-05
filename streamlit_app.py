@@ -173,7 +173,6 @@ class HSEmotionRecognizer:
         return [self.idx_to_class[pred] for pred in preds],scores
 
 def main():
-    #labels = ['original', 'angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
     #config
     labels = ['original', 'angry', 'fearful', 'happy', 'sad', 'surprised']
     # 생성모델
@@ -181,21 +180,12 @@ def main():
     conv_dim = 128
     image_size = 256
     test_iters='best'
-    model_save_dir = f'models/{test_iters}-model'
-    #selected_attrs = ['angry', 'fearful', 'happy', 'neutral', 'sad', 'surprised']
+    model_save_dir = f'models'
     G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device('cpu'))
     G = Generator(conv_dim, c_dim, 6)
     G.to('cpu')
     G.load_state_dict(saved_checkpoint_G, strict = False)
-
-    # D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(test_iters))
-    # saved_checkpoint_D = torch.load(D_path, map_location=torch.device('cpu'))
-    # D = Discriminator(image_size, conv_dim, c_dim, 6)
-    # D.to('cpu')
-    # D.load_state_dict(saved_checkpoint_D, strict = False)
-
-    # 감정인식모델
     model_name='enet_b2_7'
     fer = HSEmotionRecognizer(model_name=model_name, device=device)
 
@@ -210,22 +200,17 @@ def main():
             current_time = datetime.now()
             print(current_time.isoformat().replace(":","_").replace(".","_") + '.jpg')
             file.name = current_time.isoformat().replace(":","_").replace(".","_") + '.jpg'
-            #img = Image.open(file)
-            #st.image(img)
 
             start = time.time()
 
             file_bytes = np.asarray(bytearray(file.read()), dtype=np.uint8)
             img_file = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-            logging.info("detect 시작")
             img_list = detection_and_resize_original(img_file, image_size)
-            logging.info("detect 완료")
             img_file = cv2.cvtColor(img_list[0], cv2.COLOR_BGR2RGB)
             transform = []
             transform.append(T.ToTensor())
             transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
             transform = T.Compose(transform)
-            logging.info("transform 완료")
             original = transform(img_file)
             img, (x, y, w, h) = img_list[1]
             image_size = img.size[0] #256
@@ -244,7 +229,6 @@ def main():
 
                 for c_trg in c_trg_list:
                     x_fake_list.append(G(x_real, c_trg))
-                    logging.info("생성 모델!!")
                     x_origin_list.append(torch.tensor(original))
                     x_mesh_list.append(torch.tensor(original))
                 print("fake_list: ", len(x_fake_list))
@@ -261,14 +245,7 @@ def main():
                     for j in range(3):
                         for k in range(y, y+h):
                             x_origin_list[i][j][k][x:x+w] = translate_img[j][k-y] # -1에서 1 사이
-                    '''
-                    with cols[i]:
-                        numpy_image = denorm(x_origin_list[i].data.cpu()).numpy()
-                        numpy_image = np.transpose(numpy_image, (1, 2, 0))
-                        pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
-                        st.image(pil_image, width=250)
-                        st.caption(labels[i])
-                    '''
+
                     face_dict, mesh_img = get_face_mesh(to_pil_image(0.5*x_origin_list[i] + 0.5))
                     if face_dict == None:
                         with cols[i]:
@@ -319,8 +296,8 @@ def main():
                 x1, y1, x2, y2 = box[0:4]
                 x1 = max(0, x1)
                 y1 = max(0, y1)
-                x2 = min(frame.shape[1], x2) # frame.shape[1] - 이미지의 너비
-                y2 = min(frame.shape[0], y2) # frame.shape[0] - 이미지의 높이
+                x2 = min(frame.shape[1], x2)
+                y2 = min(frame.shape[0], y2)
                 face_img = frame[y1:y2, x1:x2, :]
                 emotion, scores = fer.predict_emotions(face_img, logits=False)
                 print("score",scores)

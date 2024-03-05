@@ -83,7 +83,7 @@ async def generate_emotion(item: Item):
     conv_dim = 128
     image_size = 256
     test_iters='best'
-    model_save_dir = f'stargan_new_6_leaky/models/best-model'
+    model_save_dir = f'models'
     G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device(device))
     G = Generator(conv_dim, c_dim, 6)

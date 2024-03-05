@@ -59,6 +59,10 @@ cd StarGAN-FE
 
 미리 학습된 모델 체크포인트는 [링크](https://drive.google.com/drive/folders/1cGWF-CcUR04r6YbZLTP5Q84nNrqCUmyy?usp=drive_link)에서 다운 받아 사용한다.
 
+아래와 같이 실행에 필요한 폴더를 생성한다.
+
+(ex. extended_train/angry/, extended_train/fearful/, train/angry/ 등)
+
 ```
 stargan
 ├── backend.py
@@ -66,6 +70,12 @@ stargan
 ├── datapreprocess.py
 ├── emotion_recognition.py
 ├── data
+│   ├── extended_train
+│   │   ├── angry
+│   │   ├── fearful
+│   │   ├── happy
+│   │   ├── sadness
+│   │   └── surprised
 │   ├── train
 │   │   ├── angry
 │   │   ├── fearful
