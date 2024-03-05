@@ -58,7 +58,6 @@ def detect_face(frame):
 def get_model_path(model_name):
     model_file=model_name+'.pt'
     cache_dir = os.path.join(os.path.expanduser('~'), '.hsemotion')
-    print(cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
     fpath=os.path.join(cache_dir,model_file)
     if not os.path.isfile(fpath):
@@ -104,17 +103,9 @@ class HSEmotionRecognizer:
         model.classifier=torch.nn.Identity()
         model=model.to(device)
         self.model=model.eval()
-        print(path,self.test_transforms)
     
     def get_probab(self, features):
         x=np.dot(features,np.transpose(self.classifier_weights))+self.classifier_bias
-        print("min_features", np.min(features))
-        print("max_features", np.max(features))
-        print("min_weights", np.min(self.classifier_weights))
-        print("max_weights", np.max(self.classifier_weights))
-        print("x_min: ", np.min(x))
-        print("x_max: ", np.max(x))
-        print("classifier_bias: ", self.classifier_bias)
         return x
     
     def extract_features(self,face_img):
@@ -198,7 +189,6 @@ def main():
         cols = [*st.columns(len(labels)//2), *st.columns(len(labels)//2)]
         if file is not None:
             current_time = datetime.now()
-            print(current_time.isoformat().replace(":","_").replace(".","_") + '.jpg')
             file.name = current_time.isoformat().replace(":","_").replace(".","_") + '.jpg'
 
             start = time.time()
@@ -215,7 +205,6 @@ def main():
             img, (x, y, w, h) = img_list[1]
             image_size = img.size[0] #256
             x_real = transform(img)
-            print(x_real.shape)
             x_real = x_real.view(1, 3, image_size, image_size)
             
             c_org = torch.Tensor([3])
@@ -231,7 +220,6 @@ def main():
                     x_fake_list.append(G(x_real, c_trg))
                     x_origin_list.append(torch.tensor(original))
                     x_mesh_list.append(torch.tensor(original))
-                print("fake_list: ", len(x_fake_list))
                 for i, fake in enumerate(x_fake_list):
                     translate_img = fake.data.cpu().squeeze(0)
                     translate_img = translate_img.permute(1, 2, 0).numpy()
@@ -239,9 +227,6 @@ def main():
                     translate_img = torch.from_numpy(translate_img).permute(2, 0, 1) # C, H, W
                     min_value = translate_img.min()
                     max_value = translate_img.max()
-
-                    print("min", np.min(min_value.item()), np.max(max_value.item()))
-                    print("min_origin", np.min(x_origin_list[i].cpu().numpy()), np.max(x_origin_list[i].cpu().numpy()))
                     for j in range(3):
                         for k in range(y, y+h):
                             x_origin_list[i][j][k][x:x+w] = translate_img[j][k-y] # -1에서 1 사이
@@ -255,11 +240,7 @@ def main():
                             st.image(pil_image, width=250)
                             st.caption(labels[i])
                         continue
-                    print("mesh img : ", np.array(mesh_img).shape)
-                    print("origin_list: ", np.array(x_origin_list[i]).shape)
                     mesh_tensor = transform(mesh_img)
-                    print("mesh tensor : ", np.array(mesh_tensor).shape)
-                    print("mesh img[0][0]", np.array(mesh_img)[0][0])
                     for j in range(3):
                         for y1, x_list in face_dict.items():
                             if len(x_list) == 1:
@@ -268,7 +249,6 @@ def main():
                             x_mesh_list[i][j][y1][x1:x2] = mesh_tensor[j][y1][x1:x2]
                     numpy_image = denorm(x_mesh_list[i].data.cpu()).numpy()
                     numpy_image = np.transpose(numpy_image, (1, 2, 0))
-                    print(numpy_image.shape)
                     pil_image = Image.fromarray((numpy_image*255).astype(np.uint8))
                     with cols[i]:
                         st.image(pil_image, width=250)
@@ -300,10 +280,7 @@ def main():
                 y2 = min(frame.shape[0], y2)
                 face_img = frame[y1:y2, x1:x2, :]
                 emotion, scores = fer.predict_emotions(face_img, logits=False)
-                print("score",scores)
-                print("sum_score", np.sum(scores))
                 caption_placeholder.caption(feedback[emotion])
-                print("emotion: ", emotion)
             else:
                 caption_placeholder.caption("no face")
             end = time.time()
