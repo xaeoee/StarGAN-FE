@@ -73,18 +73,28 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
+    print("get request received at /")
+    logging.info("get request received at /")
     return {"message": "Hello World"}
+
 
 @app.post("/generate")
 async def generate_emotion(item: Item):
+    print("POST request received at /generate")
+    logging.info("POST request received at /generate")
+    logging.info("Request received at /generate")  # 요청이 들어왔을 때 로그 남기기
+
+    print("Request received at /generate", flush=True)
+    print("ADFADAA")
     # 생성모델 초기 세팅
     labels = ['원본', '분노', '공포', '기쁨', '슬픔', '놀람']
     c_dim = 5
     conv_dim = 128
     image_size = 256
     test_iters='best'
-    model_save_dir = f'models'
-    G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
+    model_save_dir = f'data/models'
+    # G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
+    G_path = os.path.join(model_save_dir, 'best-G_900000.ckpt')
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device(device))
     G = Generator(conv_dim, c_dim, 6)
     G.to(device)

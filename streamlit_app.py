@@ -170,8 +170,10 @@ def main():
     conv_dim = 128
     image_size = 256
     test_iters='best'
-    model_save_dir = f'models'
-    G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
+    model_save_dir = f'data/models'
+    # G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(test_iters))
+    G_path = os.path.join(model_save_dir, 'best-G_900000.ckpt')
+
     saved_checkpoint_G = torch.load(G_path, map_location=torch.device('cpu'))
     G = Generator(conv_dim, c_dim, 6)
     G.to('cpu')
